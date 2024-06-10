@@ -7,24 +7,33 @@
 #include <list>
 #include <cstdlib>
 #include <ctime>
+// ---------- Autores: Lizardo Castillo y Karla Cornejo ---------- //
 
+/*Autores: Lizardo Castillo y Karla Cornejo*/
+// Clase que gestiona el conjunto de frames en el buffer pool
 class BufferPool {
 private:
+    /*Autor: Lizardo Castillo*/
+    // Representa un frame individual en el buffer pool
     struct Frame {
-        int frameID;
-        int pageID;
-        bool dirtyBit;
-        bool pinned;
-        int pinCount;
-        bool refBit;
+        int frameID;    // Identificador único del frame
+        int pageID;     // Identificador de la página contenida en el frame
+        bool dirtyBit;  // Indica si el contenido del frame ha sido modificado
+        bool pinned;    // Indica si el frame está anclado (bloqueado)
+        int pinCount;   // Número de veces que el frame ha sido anclado
+        bool refBit;    // Bit de referencia para el algoritmo Clock
     };
 
-    std::vector<Frame> frames;
-    std::string tablaFilename;
+    std::vector<Frame> frames; // Vector de frames en el buffer pool
+    std::string tablaFilename; // Nombre del archivo que contiene la tabla del estado de los frames
 
 public:
+    /*Autora: Karla Cornejo*/
+    // Constructor que inicializa el nombre del archivo de la tabla
     BufferPool() : tablaFilename("TablaBufferPool.txt") {}
 
+    /*Autor: Lizardo Castillo*/
+    // Permite al usuario especificar el número de frames y los inicializa con valores predeterminados
     void MenuBufferPool() {
         int numFrames;
         std::cout << "Ingrese la cantidad de frames que tendra el buffer: ";
@@ -32,12 +41,14 @@ public:
         frames.resize(numFrames);
 
         for (int i = 0; i < numFrames; ++i) {
-            frames[i] = {i, 0, false, false, 0, false}; // Inicializar pageID con -1 para indicar frame vacío
+            frames[i] = {i, 0, false, false, 0, false}; // Inicializar pageID con 0 para indicar frame vacío
         }
 
         CrearTabla();
     }
 
+    /*Autor: Lizardo Castillo*/
+    // Crea un archivo con la información del estado actual de los frames
     void CrearTabla() {
         std::ofstream tablaFile(tablaFilename);
 
@@ -58,6 +69,8 @@ public:
         }
     }
 
+    /*Autor: Lizardo Castillo*/
+    // Muestra el contenido de la tabla del buffer pool en la consola
     void MostrarTabla() {
         std::ifstream tablaFile(tablaFilename);
         if (tablaFile.is_open()) {
@@ -71,22 +84,30 @@ public:
         }
     }
 
+    /*Autora: Karla Cornejo*/
+    // Actualiza la tabla con la información actualizada de los frames
     void ActualizarTabla() {
         CrearTabla();
     }
 
+    /*Autora: Karla Cornejo*/
+    // Permite que BufferManager acceda a los miembros privados de BufferPool
     friend class BufferManager;
 };
 
+/*Autores: Lizardo Castillo y Karla Cornejo*/
+// Clase que administra el reemplazo de páginas en el buffer pool utilizando los algoritmos LRU o Clock
 class BufferManager {
 private:
-    BufferPool& bufferPool;
-    bool usarLRU;
-    int punteroReloj;
-    std::list<int> listaLRU;
-    std::unordered_map<int, std::list<int>::iterator> mapaLRU;
+    BufferPool& bufferPool;         // Referencia al buffer pool
+    bool usarLRU;                   // Indica si se está usando el algoritmo LRU
+    int punteroReloj;               // Puntero para el algoritmo Clock
+    std::list<int> listaLRU;        // Lista para el algoritmo LRU
+    std::unordered_map<int, std::list<int>::iterator> mapaLRU;  // Mapa para acceso rápido en LRU
 
 public:
+    /*Autora: Karla Cornejo*/
+    // Constructor que selecciona aleatoriamente el algoritmo de reemplazo (LRU o Clock)
     BufferManager(BufferPool& pool) : bufferPool(pool), punteroReloj(0) {
         std::srand(std::time(nullptr));
         usarLRU = std::rand() % 2;
@@ -98,6 +119,8 @@ public:
         }
     }
 
+    /*Autora: Karla Cornejo*/
+    // Interactúa con el usuario para gestionar el acceso y modificación de las páginas en el buffer pool
     void MenuBufferManager() {
         while (true) {
             int pageID;
@@ -107,7 +130,7 @@ public:
             std::string nombreArchivo = "Paginas/" + std::to_string(pageID) + ".txt";
             std::ifstream archivoPagina(nombreArchivo);
             if (!archivoPagina.is_open()) {
-                std::cerr << "No se pudo abrir el archivo de la página: " << nombreArchivo << std::endl;
+                std::cerr << "No se pudo abrir el archivo de la pagina: " << nombreArchivo << std::endl;
                 continue;
             }
 
@@ -164,11 +187,11 @@ public:
                             outFile << contenido;
                             outFile.close();
                         } else {
-                            std::cerr << "No se pudo escribir en el archivo de la página." << std::endl;
+                            std::cerr << "No se pudo escribir en el archivo de la pagina." << std::endl;
                         }
                     }
                 } else {
-                    std::cerr << "Acción no válida." << std::endl;
+                    std::cerr << "Acción no valida." << std::endl;
                     continue;
                 }
 
@@ -187,6 +210,8 @@ public:
         }
     }
 
+    /*Autores: Lizardo Castillo y Karla Cornejo*/
+    // Actualiza la lista LRU al acceder a una página, moviéndola al frente de la lista
     void ActualizarLRU(int pageID) {
         if (mapaLRU.find(pageID) != mapaLRU.end()) {
             listaLRU.erase(mapaLRU[pageID]);
@@ -195,6 +220,8 @@ public:
         mapaLRU[pageID] = listaLRU.begin();
     }
 
+    /*Autores: Lizardo Castillo y Karla Cornejo*/
+    // Implementa el algoritmo LRU para el reemplazo de páginas cuando el buffer pool está lleno
     void LRU(int pageID) {
         while (!listaLRU.empty()) {
             int lruPageID = listaLRU.back();
@@ -216,6 +243,8 @@ public:
         std::cerr << "No se pudo encontrar una página no anclada para reemplazar." << std::endl;
     }
 
+    /*Autores: Lizardo Castillo y Karla Cornejo*/
+    // Implementa el algoritmo Clock para el reemplazo de páginas cuando el buffer pool está lleno
     void AlgoritmoClock(int pageID) {
         while (true) {
             BufferPool::Frame& frame = bufferPool.frames[punteroReloj];
@@ -235,6 +264,8 @@ public:
         }
     }
 
+    /*Autora: Karla Cornejo*/
+    // Busca y retorna un frame en el buffer pool que contiene la página especificada por pageID
     BufferPool::Frame* BuscarFramePorPagina(int pageID) {
         for (auto& frame : bufferPool.frames) {
             if (frame.pageID == pageID) {
@@ -244,6 +275,8 @@ public:
         return nullptr;
     }
 
+    /*Autora: Karla Cornejo*/
+    // Busca y retorna un frame vacío (sin página) en el buffer pool
     BufferPool::Frame* BuscarFrameVacio() {
         for (auto& frame : bufferPool.frames) {
             if (frame.pageID == 0) { // Verificar si el frame está vacío
